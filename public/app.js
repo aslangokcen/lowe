@@ -13,6 +13,9 @@ import {
 import {
   getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+import {
+  getFunctions, httpsCallable
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js";
 import { firebaseConfig } from "./config.js";
 
 const CONFIG_READY = firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith("BURAYA");
@@ -38,7 +41,9 @@ const BORSA_PRESETS = {
   "Defansif": { technical: 20, fundamental: 30, macro: 20, news: 10, risk: 20 },
 };
 
-let auth, db, storage;
+let auth, db, storage, functions;
+const FN_REGION = "europe-west3";
+function callFn(name, data) { return httpsCallable(functions, name)(data || {}).then((r) => r.data); }
 let currentUser = null, currentProfile = null;
 let unsub = { content: null, users: null, settings: null, reports: null, borsaStocks: null, borsaCfg: null, borsaNews: null, docs: null };
 let docsCache = [], docFilter = "";
@@ -58,6 +63,7 @@ function boot() {
   }
   const app = initializeApp(firebaseConfig);
   auth = getAuth(app); db = getFirestore(app); storage = getStorage(app);
+  functions = getFunctions(app, FN_REGION);
   bindLogin(); bindAppShell();
   onAuthStateChanged(auth, handleAuthChange);
 }
@@ -168,9 +174,13 @@ function bindAppShell() {
   $("#sd-close").addEventListener("click", () => hide($("#stock-modal")));
   $("#stock-modal").addEventListener("click", (e) => { if (e.target.id === "stock-modal") hide($("#stock-modal")); });
   $("#quick-add-btn").addEventListener("click", quickAddStock);
+  bindSymbolSearch();
+  $("#manual-scores-toggle").addEventListener("change", (e) => setManualMode(e.target.checked));
   $("#new-news-btn").addEventListener("click", () => openNewsForm());
   $("#news-cancel").addEventListener("click", () => hide($("#news-form")));
   $("#news-form").addEventListener("submit", saveNews);
+  $("#news-refresh").addEventListener("click", () => loadMarketNews(true));
+  $$(".news-tab").forEach((t) => t.addEventListener("click", () => switchNewsTab(t.dataset.newstab)));
   $("#weights-form").addEventListener("submit", saveWeights);
   ["#w-technical", "#w-fundamental", "#w-macro", "#w-news", "#w-risk"].forEach((s) => $(s).addEventListener("input", updateWeightSum));
   $("#macro-form").addEventListener("submit", saveMacro);
@@ -208,6 +218,7 @@ function switchBorsaSub(name) {
   $("#bsub-" + name).classList.add("active");
   if (name === "rejim") fetchFX();
   if (name === "tumhisseler") renderScreener();
+  if (name === "haberler") loadMarketNews();
 }
 
 // ---------------- Icerik ----------------
@@ -471,6 +482,13 @@ const MACRO_FIELDS = [
   { id: "sp500", label: "S&P 500" }, { id: "rate", label: "Faiz" }, { id: "vix", label: "VIX" },
   { id: "cds", label: "CDS" }, { id: "bist", label: "BIST100" },
 ];
+let autoStockData = null;  // son cekilen otomatik veri (ad/sektor/skor)
+function setManualMode(on) {
+  $("#manual-scores-toggle").checked = on;
+  ["#sc-technical", "#sc-fundamental"].forEach((s) => { $(s).readOnly = !on; });
+  $("#stock-name").readOnly = !on;
+  $("#stock-sector").readOnly = !on;
+}
 function openStockForm(s = null) {
   $("#stock-id").value = s?.id || ""; $("#stock-symbol").value = s?.symbol || ""; $("#stock-name").value = s?.name || ""; $("#stock-sector").value = s?.sector || "";
   const sc = s?.scores || {};
@@ -478,10 +496,43 @@ function openStockForm(s = null) {
   const ms = s?.macroSens || {};
   MACRO_FIELDS.forEach((m) => { const el = $("#ms-" + m.id); if (el) el.value = ms[m.id] ?? ""; });
   $("#stock-note").value = s?.note || "";
+  autoStockData = null;
+  setManualMode(s?.manualScores === true);
+  hide($("#symbol-suggest")); hide($("#auto-status"));
   hide($("#stock-modal"));
   switchBorsaSub("hisseler");
   show($("#stock-form")); $("#stock-symbol").focus();
+  // mevcut hisseyi duzenliyorsak skorlari tazele (manuel degilse)
+  if (s?.symbol && s?.manualScores !== true) fetchAndFillStock(s.symbol, false);
 }
+
+// hisse verisini cek, ad/sektor/skorlari otomatik doldur
+async function fetchAndFillStock(symbol, focusAfter = true) {
+  const status = $("#auto-status");
+  status.className = "auto-status"; status.textContent = "📡 " + symbol + " verisi alınıyor…"; show(status);
+  try {
+    const d = await callFn("stockData", { symbol });
+    autoStockData = d;
+    if (d.name) $("#stock-name").value = d.name;
+    if (d.sector) $("#stock-sector").value = d.sector;
+    const manual = $("#manual-scores-toggle").checked;
+    if (!manual) {
+      if (d.scores?.technical != null) $("#sc-technical").value = d.scores.technical;
+      if (d.scores?.fundamental != null) $("#sc-fundamental").value = d.scores.fundamental;
+    }
+    const parts = [];
+    if (d.price != null) parts.push("Fiyat " + d.price + " ₺");
+    if (d.changePct != null) parts.push((d.changePct >= 0 ? "▲" : "▼") + " %" + Math.abs(d.changePct).toFixed(2));
+    if (d.scores?.technical != null) parts.push("Teknik " + d.scores.technical);
+    if (d.scores?.fundamental != null) parts.push("Temel " + d.scores.fundamental);
+    status.className = "auto-status ok"; status.textContent = "✓ " + parts.join("  ·  ");
+  } catch (err) {
+    status.className = "auto-status err";
+    status.textContent = "⚠️ Otomatik veri alınamadı (" + (err.message || err.code || "") + "). Bilgileri elle girebilirsiniz.";
+    setManualMode(true);
+  }
+}
+
 async function saveStock(e) {
   e.preventDefault();
   const id = $("#stock-id").value;
@@ -489,10 +540,14 @@ async function saveStock(e) {
   const msNum = (sel) => { const x = $(sel).value; return x === "" ? null : Math.max(-1, Math.min(1, +x)); };
   const macroSens = {};
   MACRO_FIELDS.forEach((m) => { const v = msNum("#ms-" + m.id); if (v != null) macroSens[m.id] = v; });
+  const manual = $("#manual-scores-toggle").checked;
   const payload = {
     symbol: ($("#stock-symbol").value.trim() || "").toUpperCase(), name: $("#stock-name").value.trim(), sector: $("#stock-sector").value.trim(),
     scores: { technical: num("#sc-technical"), fundamental: num("#sc-fundamental"), macro: num("#sc-macro"), news: num("#sc-news"), risk: num("#sc-risk") },
-    macroSens, note: $("#stock-note").value.trim(), updatedAt: serverTimestamp(), updatedBy: currentUser.uid, updatedByName: currentProfile.displayName || currentUser.email,
+    macroSens, manualScores: manual,
+    price: autoStockData?.price ?? null, changePct: autoStockData?.changePct ?? null,
+    autoDetail: autoStockData?.detail ?? null, autoReasons: autoStockData?.reasons ?? null,
+    note: $("#stock-note").value.trim(), updatedAt: serverTimestamp(), updatedBy: currentUser.uid, updatedByName: currentProfile.displayName || currentUser.email,
   };
   try {
     if (id) await updateDoc(doc(db, "borsa_stocks", id), payload);
@@ -549,9 +604,21 @@ async function openStockDetail(s) {
         return `<span class="ms-chip ${cls}">${esc(MACRO_LABEL[k] || k)} <b>${v > 0 ? "+" : ""}${v}</b></span>`;
       }).join("") + `</div>`
     : `<div class="sd-section-t">Makro Duyarlılık</div><div class="muted small">Henüz girilmedi. “Düzenle” ile ekleyebilirsiniz.</div>`;
-  $("#sd-note").innerHTML = s.note ? `<div class="sd-section-t">Gerekçe</div><div class="sd-note-body">${esc(s.note)}</div>` : "";
+  let noteHtml = s.note ? `<div class="sd-section-t">Gerekçe</div><div class="sd-note-body">${esc(s.note)}</div>` : "";
+  // otomatik analiz gerekceleri (varsa)
+  const ar = s.autoReasons;
+  if (ar && (ar.technical?.length || ar.fundamental?.length)) {
+    noteHtml += `<div class="sd-section-t" style="margin-top:14px">Otomatik Analiz</div>`;
+    if (ar.technical?.length) noteHtml += `<div class="auto-reasons"><b>Teknik:</b> ${ar.technical.map((x) => esc(x)).join(" · ")}</div>`;
+    if (ar.fundamental?.length) noteHtml += `<div class="auto-reasons"><b>Temel:</b> ${ar.fundamental.map((x) => esc(x)).join(" · ")}</div>`;
+  }
+  $("#sd-note").innerHTML = noteHtml;
   // edit butonu
   $("#sd-edit").onclick = () => openStockForm(s);
+  // haber + KAP (asenkron)
+  $("#sd-news").innerHTML = '<div class="muted small">Yükleniyor…</div>';
+  $("#sd-kap").innerHTML = '<div class="muted small">Yükleniyor…</div>';
+  loadStockFeeds(s.symbol, s.name);
   show($("#stock-modal"));
   // grafik — TradingView resmi gomulu "Advanced Chart" widget'i (BIST gecikmeli)
   const host = $("#sd-tv"); host.innerHTML = "";
@@ -571,6 +638,86 @@ async function openStockDetail(s) {
   });
   wrap.appendChild(tvScript);
   host.appendChild(wrap);
+}
+
+// ---- hisse arama (autocomplete) ----
+let searchTimer = null;
+function bindSymbolSearch() {
+  const inp = $("#stock-symbol"), box = $("#symbol-suggest");
+  inp.addEventListener("input", () => {
+    const text = inp.value.trim();
+    clearTimeout(searchTimer);
+    if (text.length < 2) { hide(box); return; }
+    searchTimer = setTimeout(async () => {
+      try {
+        const { results } = await callFn("searchSymbols", { text });
+        if (!results || !results.length) { box.innerHTML = '<div class="sg-empty">Sonuç yok</div>'; show(box); return; }
+        box.innerHTML = results.map((r) =>
+          `<div class="sg-item" data-sym="${esc(r.symbol)}"><b>${esc(r.symbol)}</b> <span class="muted">${esc(r.name || "")}</span>${r.price != null ? `<span class="sg-price">${r.price} ₺</span>` : ""}</div>`
+        ).join("");
+        box.querySelectorAll(".sg-item").forEach((it) => {
+          it.addEventListener("click", () => {
+            inp.value = it.dataset.sym; hide(box);
+            fetchAndFillStock(it.dataset.sym);
+          });
+        });
+        show(box);
+      } catch { hide(box); }
+    }, 320);
+  });
+  inp.addEventListener("blur", () => setTimeout(() => hide(box), 200));
+  inp.addEventListener("change", () => { const v = inp.value.trim().toUpperCase(); if (v.length >= 3) fetchAndFillStock(v); });
+}
+
+// ---- hisse detay: haber + KAP yukle ----
+async function loadStockFeeds(symbol, name) {
+  callFn("stockNews", { symbol, name }).then((r) => {
+    const el = $("#sd-news");
+    if (!r.items || !r.items.length) { el.innerHTML = '<div class="muted small">Haber bulunamadı.</div>'; return; }
+    el.innerHTML = r.items.map((n) => feedItem(n)).join("");
+  }).catch(() => { $("#sd-news").innerHTML = '<div class="muted small">Haber alınamadı.</div>'; });
+
+  callFn("kapDisclosures", { symbol, name }).then((r) => {
+    const el = $("#sd-kap");
+    if (!r.available) { el.innerHTML = '<div class="muted small">KAP bağlantısı şu an kullanılamıyor.</div>'; return; }
+    if (!r.items || !r.items.length) { el.innerHTML = '<div class="muted small">Son 30 günde KAP bildirimi yok.</div>'; return; }
+    el.innerHTML = r.items.map((n) => feedItem(n)).join("");
+  }).catch(() => { $("#sd-kap").innerHTML = '<div class="muted small">KAP alınamadı.</div>'; });
+}
+function feedItem(n) {
+  const d = n.date ? new Date(n.date) : null;
+  const dateStr = d && !isNaN(d) ? d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" }) : "";
+  return `<a class="feed-item" href="${esc(n.url || "#")}" target="_blank" rel="noopener">
+    <div class="feed-title">${esc(n.title || "")}</div>
+    <div class="feed-meta">${esc(n.source || "")}${dateStr ? " · " + dateStr : ""}</div></a>`;
+}
+
+// ---- Haberler sekmesi: genel canli akis ----
+let marketNewsLoaded = false;
+function switchNewsTab(name) {
+  $$(".news-tab").forEach((t) => t.classList.toggle("active", t.dataset.newstab === name));
+  $("#newssub-canli").classList.toggle("hidden", name !== "canli");
+  $("#newssub-manuel").classList.toggle("hidden", name !== "manuel");
+}
+async function loadMarketNews(force = false) {
+  if (marketNewsLoaded && !force) return;
+  marketNewsLoaded = true;
+  const list = $("#live-news-list"), empty = $("#live-news-empty");
+  empty.textContent = "Haber yükleniyor…"; show(empty); list.innerHTML = "";
+  try {
+    const { items } = await callFn("marketNews", {});
+    if (!items || !items.length) { empty.textContent = "Haber bulunamadı."; return; }
+    hide(empty);
+    list.innerHTML = items.map((n) => {
+      const d = n.date ? new Date(n.date) : null;
+      const dateStr = d && !isNaN(d) ? d.toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+      return `<a class="news-card" href="${esc(n.url || "#")}" target="_blank" rel="noopener">
+        <div class="news-card-title">${esc(n.title || "")}</div>
+        <div class="news-card-meta"><span class="news-src">${esc(n.source || "")}</span>${dateStr ? " · " + dateStr : ""}</div></a>`;
+    }).join("");
+  } catch (err) {
+    empty.textContent = "Haber akışı alınamadı: " + (err.message || err.code || "");
+  }
 }
 
 // ---------------- BORSA: Tum Hisseler (screener) ----------------
@@ -595,14 +742,24 @@ async function quickAddStock() {
   const sym = ($("#quick-symbol").value.trim() || "").toUpperCase();
   if (!sym) { toast("Sembol girin (örn. ASELS).", "error"); return; }
   if (borsaStocks.some((x) => (x.symbol || "").toUpperCase() === sym)) { toast(sym + " zaten takip listenizde.", "error"); return; }
+  const btn = $("#quick-add-btn"); btn.disabled = true; btn.textContent = "Veri alınıyor…";
   try {
+    let d = null;
+    try { d = await callFn("stockData", { symbol: sym }); } catch { /* veri yoksa bos eklenir */ }
     await addDoc(collection(db, "borsa_stocks"), {
-      symbol: sym, name: "", sector: $("#quick-sector").value.trim(), scores: {}, macroSens: {}, note: "",
+      symbol: sym,
+      name: d?.name || "",
+      sector: d?.sector || $("#quick-sector").value.trim(),
+      scores: { technical: d?.scores?.technical ?? null, fundamental: d?.scores?.fundamental ?? null },
+      macroSens: {}, manualScores: false,
+      price: d?.price ?? null, changePct: d?.changePct ?? null,
+      autoDetail: d?.detail ?? null, autoReasons: d?.reasons ?? null, note: "",
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: currentUser.uid, updatedByName: currentProfile.displayName || currentUser.email,
     });
     $("#quick-symbol").value = ""; $("#quick-sector").value = "";
-    toast(sym + " takip listenize eklendi. Skorlamak için “Takip Listem”e geçin.", "success");
+    toast(sym + (d?.name ? " (" + d.name + ")" : "") + " eklendi" + (d?.scores?.technical != null ? ` — Teknik ${d.scores.technical}, Temel ${d.scores.fundamental ?? "—"}` : "") + ".", "success");
   } catch (err) { toast(permError(err) || ("Eklenemedi: " + err.code), "error"); }
+  finally { btn.disabled = false; btn.textContent = "+ Takip Listeme Ekle"; }
 }
 
 // ---------------- BORSA: strateji ----------------

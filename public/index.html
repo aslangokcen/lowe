@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.gstatic.com" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=8" />
 </head>
 <body>
 
@@ -228,17 +228,26 @@
           <form id="stock-form" class="card form-card hidden">
             <input type="hidden" id="stock-id" />
             <div class="grid2">
-              <label><span>Sembol</span><input id="stock-symbol" type="text" required maxlength="12" placeholder="THYAO" autocapitalize="characters" /></label>
-              <label><span>Ad</span><input id="stock-name" type="text" maxlength="80" placeholder="Türk Hava Yolları" /></label>
+              <label class="symbol-field"><span>Sembol — 3 harf yazıp listeden seçin</span>
+                <input id="stock-symbol" type="text" required maxlength="12" placeholder="THY yazın…" autocapitalize="characters" autocomplete="off" />
+                <div id="symbol-suggest" class="symbol-suggest hidden"></div>
+              </label>
+              <label><span>Ad <span class="auto-tag">otomatik</span></span><input id="stock-name" type="text" maxlength="80" placeholder="(otomatik gelir)" readonly /></label>
             </div>
-            <label><span>Sektör</span><input id="stock-sector" type="text" maxlength="60" placeholder="Havacılık" /></label>
+            <label><span>Sektör <span class="auto-tag">otomatik</span></span><input id="stock-sector" type="text" maxlength="60" placeholder="(otomatik gelir)" readonly /></label>
+            <div id="auto-status" class="auto-status hidden"></div>
+            <div class="scores-head">
+              <span class="scores-label">Skorlar <span class="auto-tag">otomatik</span></span>
+              <label class="switch edit-toggle"><input type="checkbox" id="manual-scores-toggle" /> Skorları elle düzelt</label>
+            </div>
             <div class="grid5">
-              <label><span>Teknik</span><input id="sc-technical" type="number" min="0" max="10" step="0.1" /></label>
-              <label><span>Temel</span><input id="sc-fundamental" type="number" min="0" max="10" step="0.1" /></label>
+              <label><span>Teknik</span><input id="sc-technical" type="number" min="0" max="10" step="0.1" readonly /></label>
+              <label><span>Temel</span><input id="sc-fundamental" type="number" min="0" max="10" step="0.1" readonly /></label>
               <label><span>Makro</span><input id="sc-macro" type="number" min="0" max="10" step="0.1" /></label>
               <label><span>Haber</span><input id="sc-news" type="number" min="0" max="10" step="0.1" /></label>
               <label><span>Risk</span><input id="sc-risk" type="number" min="0" max="10" step="0.1" /></label>
             </div>
+            <p class="muted small" style="margin:-6px 0 10px">Teknik &amp; Temel otomatik hesaplanır (fiyat/EMA/RSI/MACD &amp; FK/PD-DD/ROE). Makro, Haber, Risk'i siz girin. “Elle düzelt” ile tümünü değiştirebilirsiniz — tahmini göstergedir, yatırım tavsiyesi değildir.</p>
             <details class="macro-sens">
               <summary>Makro duyarlılık profili (-1 … +1) — opsiyonel</summary>
               <p class="muted small" style="margin:8px 0">Hissenin makro varlıklara duyarlılığı. Örn. ihracatçı için USD/TRY pozitif; havacılık için Brent negatif. (Spec bölüm 3.2)</p>
@@ -261,7 +270,26 @@
 
         <!-- HABERLER -->
         <div id="bsub-haberler" class="subpanel">
-          <div class="panel-head"><h2>Haberler</h2><button id="new-news-btn" class="btn btn-primary" data-can-write>+ Haber Ekle</button></div>
+          <div class="panel-head"><h2>Haberler</h2>
+            <div class="news-head-actions">
+              <button id="news-refresh" class="btn btn-ghost btn-sm">↻ Yenile</button>
+              <button id="new-news-btn" class="btn btn-primary btn-sm" data-can-write>+ Elle Ekle</button>
+            </div>
+          </div>
+          <div class="news-tabs">
+            <button class="news-tab active" data-newstab="canli">Canlı Akış</button>
+            <button class="news-tab" data-newstab="manuel">Elle Skorlanan</button>
+          </div>
+
+          <!-- CANLI AKIS -->
+          <div id="newssub-canli" class="news-subpanel">
+            <p class="panel-intro">Türkçe piyasa haberleri (BloombergHT, BBC Türkçe) — otomatik akıyor. Hisse-özel haberler ve KAP bildirimleri, ilgili hisseye tıklayınca detayında.</p>
+            <div id="live-news-list" class="list"></div>
+            <div id="live-news-empty" class="empty hidden">Haber yükleniyor…</div>
+          </div>
+
+          <!-- ELLE SKORLANAN -->
+          <div id="newssub-manuel" class="news-subpanel hidden">
           <p class="panel-intro">Haber Skoru = Yön × Önem × Güvenilirlik × Güncellik. KAP en yüksek güven; haber sitesi orta; sosyal medya düşük.</p>
           <form id="news-form" class="card form-card hidden">
             <input type="hidden" id="news-id" />
@@ -280,7 +308,8 @@
             <div class="form-actions"><button type="submit" class="btn btn-primary">Kaydet</button><button type="button" id="news-cancel" class="btn btn-ghost">Vazgeç</button></div>
           </form>
           <div id="news-list" class="list"></div>
-          <div id="news-empty" class="empty hidden">Henüz haber yok.</div>
+          <div id="news-empty" class="empty hidden">Henüz elle eklenen haber yok.</div>
+          </div>
         </div>
 
         <!-- ALARMLAR -->
@@ -431,12 +460,22 @@
             <div id="sd-note" class="sd-note"></div>
           </div>
         </div>
+        <div class="sd-feeds">
+          <div class="sd-feed-col">
+            <div class="sd-section-t">📰 Hisse Haberleri</div>
+            <div id="sd-news" class="sd-feed-list"><div class="muted small">Yükleniyor…</div></div>
+          </div>
+          <div class="sd-feed-col">
+            <div class="sd-section-t">🏛️ KAP Bildirimleri</div>
+            <div id="sd-kap" class="sd-feed-list"><div class="muted small">Yükleniyor…</div></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div id="toast" class="toast hidden"></div>
   </div>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=8"></script>
 </body>
 </html>

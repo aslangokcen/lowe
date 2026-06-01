@@ -258,6 +258,47 @@ textarea { resize: vertical; }
 .macro-sens { margin-bottom: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; background: var(--surface-2); }
 .macro-sens summary { cursor: pointer; font-weight: 550; font-size: .88rem; color: var(--text-soft); }
 .macro-sens summary:hover { color: var(--text); }
+
+/* ---- Hisse arama (autocomplete) ---- */
+.symbol-field { position: relative; }
+.auto-tag { font-size: .62rem; font-weight: 600; background: var(--surface-3); color: var(--text-faint); padding: 1px 6px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; margin-left: 4px; }
+.symbol-suggest { position: absolute; top: 100%; left: 0; right: 0; z-index: 30; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); margin-top: 4px; max-height: 280px; overflow-y: auto; }
+.sg-item { padding: 9px 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: .9rem; border-bottom: 1px solid var(--border); }
+.sg-item:last-child { border-bottom: none; }
+.sg-item:hover { background: var(--surface-3); }
+.sg-price { margin-left: auto; font-size: .8rem; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.sg-empty { padding: 12px 13px; color: var(--text-faint); font-size: .85rem; }
+.auto-status { font-size: .85rem; padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 14px; background: var(--surface-3); color: var(--text-soft); }
+.auto-status.ok { background: #e6f1ea; color: #2f7d4f; }
+.auto-status.err { background: #f6ecd9; color: #8a5a12; }
+.scores-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.scores-label { font-size: .8rem; font-weight: 550; color: var(--text-soft); }
+.edit-toggle { font-size: .82rem; color: var(--text-soft); cursor: pointer; }
+input[readonly] { background: var(--surface-2); color: var(--text-soft); cursor: default; }
+.auto-reasons { font-size: .82rem; color: var(--text-soft); line-height: 1.5; margin-top: 4px; }
+
+/* ---- Haberler: sekmeler + canli akis ---- */
+.news-head-actions { display: flex; gap: 8px; }
+.news-tabs { display: inline-flex; background: var(--surface-3); border-radius: 11px; padding: 3px; margin-bottom: 18px; gap: 2px; }
+.news-tab { background: none; border: none; font: inherit; font-weight: 550; font-size: .88rem; color: var(--text-soft); padding: 7px 16px; cursor: pointer; border-radius: 8px; transition: .15s var(--ease); }
+.news-tab:hover { color: var(--text); }
+.news-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); font-weight: 600; }
+.news-card { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-sm); text-decoration: none; color: inherit; transition: border-color .15s var(--ease), transform .15s var(--ease); }
+.news-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.news-card-title { font-weight: 550; font-size: .95rem; line-height: 1.45; }
+.news-card-meta { font-size: .76rem; color: var(--text-faint); margin-top: 6px; }
+.news-src { font-weight: 600; color: var(--text-soft); }
+
+/* ---- Detay modal: haber + KAP feeds ---- */
+.sd-feeds { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--border); }
+@media (max-width: 760px) { .sd-feeds { grid-template-columns: 1fr; } }
+.sd-feed-col { padding: 18px 20px; }
+.sd-feed-col:first-child { border-right: 1px solid var(--border); }
+.sd-feed-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 260px; overflow-y: auto; }
+.feed-item { display: block; text-decoration: none; color: inherit; padding: 9px 11px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); transition: .15s var(--ease); }
+.feed-item:hover { background: var(--surface-3); border-color: var(--border-strong); }
+.feed-title { font-size: .85rem; font-weight: 500; line-height: 1.4; }
+.feed-meta { font-size: .72rem; color: var(--text-faint); margin-top: 4px; }
 .builder-h { margin: 18px 0 8px; font-size: .95rem; font-weight: 650; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 12px; }
 @media (max-width: 600px) { .grid3 { grid-template-columns: 1fr 1fr; } }

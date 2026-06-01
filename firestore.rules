@@ -93,6 +93,12 @@ service cloud.firestore {
       allow delete:         if canDelete();
     }
 
+    // --- borsa veri onbellegi (yalniz Cloud Functions yazar) ---
+    match /borsa_cache/{docId} {
+      allow read:  if canRead();
+      allow write: if false;
+    }
+
     // --- site ayarlari (sadece yonetici yazar) ---
     match /settings/{docId} {
       allow read:  if canRead();
