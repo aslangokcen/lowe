@@ -1,0 +1,25 @@
+{
+  "hosting": {
+    "site": "lowe",
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "scripts/**", "SETUP.md", "TESLIM.md"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|html)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  }
+}

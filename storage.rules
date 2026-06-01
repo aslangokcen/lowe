@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// ============================================================
+//  Lôwe — Cloud Storage guvenlik kurallari
+//  Yetki, kullanicinin kimlik jetonundaki (custom claim) rol +
+//  active bilgisinden okunur. Boylece Firestore'a gitmeden,
+//  hizli ve sunucuda zorlanan yetki saglanir.
+//  (Claim'ler Firestore profili degisince senkronlanir.)
+// ============================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function tok() { return request.auth.token; }
+    function isActive() { return request.auth != null && tok().active == true; }
+    function role() { return tok().role; }
+    function canWrite()  { return isActive() && (role() == 'admin' || role() == 'manager' || role() == 'staff'); }
+    function canDelete() { return isActive() && (role() == 'admin' || role() == 'manager'); }
+    function validUpload() { return request.resource.size < 25 * 1024 * 1024; }
+
+    match /uploads/{allPaths=**} {
+      allow read:           if isActive();
+      allow create, update:  if canWrite() && validUpload();
+      allow delete:         if canDelete();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,23 @@
+[
+  { "email": "yonetici1@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-1", "displayName": "Yönetici 1", "role": "admin" },
+  { "email": "yonetici2@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-2", "displayName": "Yönetici 2", "role": "admin" },
+
+  { "email": "mudur1@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-3", "displayName": "Müdür 1", "role": "manager" },
+  { "email": "mudur2@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-4", "displayName": "Müdür 2", "role": "manager" },
+  { "email": "mudur3@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-5", "displayName": "Müdür 3", "role": "manager" },
+  { "email": "mudur4@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-6", "displayName": "Müdür 4", "role": "manager" },
+  { "email": "mudur5@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-7", "displayName": "Müdür 5", "role": "manager" },
+
+  { "email": "personel1@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-8",  "displayName": "Personel 1", "role": "staff" },
+  { "email": "personel2@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-9",  "displayName": "Personel 2", "role": "staff" },
+  { "email": "personel3@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-10", "displayName": "Personel 3", "role": "staff" },
+  { "email": "personel4@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-11", "displayName": "Personel 4", "role": "staff" },
+  { "email": "personel5@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-12", "displayName": "Personel 5", "role": "staff" },
+
+  { "email": "izleyici1@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-13", "displayName": "İzleyici 1", "role": "viewer" },
+  { "email": "izleyici2@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-14", "displayName": "İzleyici 2", "role": "viewer" },
+  { "email": "izleyici3@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-15", "displayName": "İzleyici 3", "role": "viewer" },
+  { "email": "izleyici4@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-16", "displayName": "İzleyici 4", "role": "viewer" },
+  { "email": "izleyici5@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-17", "displayName": "İzleyici 5", "role": "viewer" },
+  { "email": "izleyici6@firmaniz.com", "password": "DEGISTIR-Guclu-Sifre-18", "displayName": "İzleyici 6", "role": "viewer" }
+]

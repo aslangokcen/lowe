@@ -1,0 +1,24 @@
+# bagimliliklar
+node_modules/
+scripts/node_modules/
+
+# GIZLI - asla paylasilmaz / yuklenmez
+scripts/serviceAccountKey.json
+scripts/users.json
+
+# firebase
+.firebase/
+firebase-debug.log
+*.log
+
+# sistem
+.DS_Store
+
+# sifre listesi - asla yuklenmez
+TESLIM.md
+
+# cloud functions bagimliliklari
+functions/node_modules/
+
+# gercek firebase config — GitHub'da tutulmaz (config.example.js kullan)
+public/config.js

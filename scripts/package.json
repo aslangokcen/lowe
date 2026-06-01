@@ -1,0 +1,13 @@
+{
+  "name": "kurumsal-panel-scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Toplu kullanici olusturma araclari",
+  "scripts": {
+    "bootstrap": "node bootstrap.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

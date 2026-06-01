@@ -1,0 +1,114 @@
+rules_version = '2';
+
+// ============================================================
+//  ROL / YETKI GUVENLIK KURALLARI
+//  Bu kurallar SUNUCUDA calisir; tarayicidan kandirilamaz.
+//
+//  Roller:
+//    admin   (Yonetici)        -> her sey
+//    manager (Mudur-Editor)    -> okuma + ekleme/duzenleme + SILME
+//    staff   (Personel-Editor) -> okuma + ekleme/duzenleme (SILEMEZ)
+//    viewer  (Izleyici)        -> sadece okuma
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- yardimci fonksiyonlar ---
+    function signedIn() {
+      return request.auth != null;
+    }
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    function hasProfile() {
+      return signedIn() && exists(profilePath());
+    }
+    function profile() {
+      return get(profilePath()).data;
+    }
+    function isActive() {
+      return hasProfile() && profile().active == true;
+    }
+    function role() {
+      return isActive() ? profile().role : 'none';
+    }
+    function isAdmin()   { return role() == 'admin'; }
+    function isManager() { return role() == 'manager'; }
+    function isStaff()   { return role() == 'staff'; }
+
+    // herkes (aktif kullanici): okuyabilir
+    function canRead()   { return isActive(); }
+    // admin + mudur + personel: ekleyebilir / duzenleyebilir
+    function canWrite()  { return isAdmin() || isManager() || isStaff(); }
+    // admin + mudur: silebilir  (personel SILEMEZ)
+    function canDelete() { return isAdmin() || isManager(); }
+
+    // --- kullanicilar / roller koleksiyonu ---
+    match /users/{userId} {
+      // kullanici kendi profilini okur; aktif herkes diger profilleri gorebilir
+      allow read: if signedIn() && (request.auth.uid == userId || isActive());
+      // SADECE yonetici kullanici/rol olusturur, gunceller, siler
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- esnek icerik kayitlari ---
+    match /content/{docId} {
+      allow read:           if canRead();
+      allow create, update: if canWrite();
+      allow delete:         if canDelete();
+    }
+
+    // --- raporlar (surum gecmisi dahil) ---
+    match /reports/{docId} {
+      allow read:           if canRead();
+      allow create, update: if canWrite();
+      allow delete:         if canDelete();
+    }
+
+    // --- borsa: hisseler ve skorlar ---
+    match /borsa_stocks/{docId} {
+      allow read:           if canRead();
+      allow create, update: if canWrite();
+      allow delete:         if canDelete();
+    }
+
+    // --- borsa: strateji agirliklari + makro (mudur/yonetici yazar) ---
+    match /borsa_config/{docId} {
+      allow read:  if canRead();
+      allow write: if canDelete();
+    }
+
+    // --- borsa: haberler ---
+    match /borsa_news/{docId} {
+      allow read:           if canRead();
+      allow create, update: if canWrite();
+      allow delete:         if canDelete();
+    }
+
+    // --- belgeler (yuklenen dosya kayitlari) ---
+    match /documents/{docId} {
+      allow read:           if canRead();
+      allow create, update: if canWrite();
+      allow delete:         if canDelete();
+    }
+
+    // --- site ayarlari (sadece yonetici yazar) ---
+    match /settings/{docId} {
+      allow read:  if canRead();
+      allow write: if isAdmin();
+    }
+
+    // --- islem gunlugu / denetim kaydi (ileride) ---
+    match /audit/{docId} {
+      allow read:           if isAdmin();
+      allow create:         if isActive();
+      allow update, delete: if false;
+    }
+
+    // geri kalan her sey YASAK (varsayilan guvenli)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

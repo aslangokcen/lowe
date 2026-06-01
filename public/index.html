@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lôwe</title>
+  <link rel="icon" type="image/png" href="./logo.png?v=2" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://www.gstatic.com" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+  <div id="loading" class="loading-overlay"><div class="spinner"></div></div>
+
+  <!-- ============ GIRIS ============ -->
+  <section id="login-view" class="login-view hidden">
+    <div class="login-card">
+      <div class="brand">
+        <img class="brand-logo" src="./logo.png?v=2" alt="Lôwe logo" />
+        <h1>Lôwe</h1>
+        <p class="muted">Devam etmek için giriş yapın</p>
+      </div>
+      <div id="config-warning" class="banner banner-warn hidden">
+        ⚙️ Firebase yapılandırması girilmedi. <code>public/config.js</code> dosyasını doldurun.
+      </div>
+      <form id="login-form" autocomplete="on">
+        <label><span>Kullanıcı adı (e-posta)</span>
+          <input id="login-email" type="text" required placeholder="ad@lôwe.com" autocomplete="username" autocapitalize="none" spellcheck="false" /></label>
+        <label><span>Şifre</span>
+          <input id="login-password" type="password" required placeholder="••••••••" autocomplete="current-password" /></label>
+        <div id="login-error" class="form-error hidden"></div>
+        <button type="submit" id="login-btn" class="btn btn-primary btn-block">Giriş Yap</button>
+      </form>
+      <p class="muted small center">Şifrenizi bilmiyorsanız yöneticinizle iletişime geçin.</p>
+    </div>
+  </section>
+
+  <!-- ============ UYGULAMA ============ -->
+  <div id="app-view" class="app-view hidden">
+    <header class="app-header">
+      <div class="app-title">
+        <img class="brand-logo-sm" src="./logo.png?v=2" alt="Lôwe" />
+        <span id="site-title">Lôwe</span>
+      </div>
+      <div class="app-user">
+        <div class="user-meta">
+          <span id="user-name" class="user-name"></span>
+          <span id="user-role" class="role-badge"></span>
+        </div>
+        <button id="changepw-btn" class="btn btn-ghost btn-sm">Şifre</button>
+        <button id="logout-btn" class="btn btn-ghost btn-sm">Çıkış</button>
+      </div>
+    </header>
+
+    <nav class="topnav">
+      <button class="nav-tab active" data-tab="yonetim">Site Yönetimi</button>
+      <button class="nav-tab" data-tab="belgeler">Belgeler</button>
+      <button class="nav-tab" data-tab="raporlar">Raporlar</button>
+      <button class="nav-tab" data-tab="borsa">Borsa</button>
+    </nav>
+
+    <main class="app-main">
+
+      <!-- ========== 1) SITE YONETIMI ========== -->
+      <section id="panel-yonetim" class="panel active">
+        <div class="subnav">
+          <button class="subnav-tab active" data-sub="icerik">İçerik</button>
+          <button class="subnav-tab" data-sub="kullanicilar" data-admin>Kullanıcılar</button>
+          <button class="subnav-tab" data-sub="ayarlar" data-admin>Ayarlar</button>
+        </div>
+
+        <!-- icerik -->
+        <div id="sub-icerik" class="subpanel active">
+          <div class="panel-head">
+            <h2>İçerik Kayıtları</h2>
+            <button id="new-content-btn" class="btn btn-primary" data-can-write>+ Yeni Kayıt</button>
+          </div>
+          <form id="content-form" class="card form-card hidden">
+            <input type="hidden" id="content-id" />
+            <label><span>Başlık</span><input id="content-title" type="text" required maxlength="200" /></label>
+            <label><span>Kategori / Etiket (opsiyonel)</span><input id="content-category" type="text" maxlength="80" placeholder="örn. Duyuru, Not" /></label>
+            <label><span>İçerik</span><textarea id="content-body" rows="6" required></textarea></label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Kaydet</button>
+              <button type="button" id="content-cancel" class="btn btn-ghost">Vazgeç</button>
+            </div>
+          </form>
+          <div id="content-list" class="list"></div>
+          <div id="content-empty" class="empty hidden">Henüz kayıt yok.</div>
+        </div>
+
+        <!-- kullanicilar -->
+        <div id="sub-kullanicilar" class="subpanel">
+          <div class="panel-head"><h2>Kullanıcı ve Rol Yönetimi</h2></div>
+          <div class="role-legend">
+            <span class="role-badge role-admin">Yönetici</span> tüm yetkiler ·
+            <span class="role-badge role-manager">Müdür</span> ekle/düzenle/sil ·
+            <span class="role-badge role-staff">Personel</span> ekle/düzenle ·
+            <span class="role-badge role-viewer">İzleyici</span> sadece görüntüler
+          </div>
+          <div id="users-list" class="list"></div>
+        </div>
+
+        <!-- ayarlar -->
+        <div id="sub-ayarlar" class="subpanel">
+          <div class="panel-head"><h2>Site Ayarları</h2></div>
+          <form id="settings-form" class="card form-card">
+            <label><span>Site Başlığı</span><input id="settings-title" type="text" maxlength="120" /></label>
+            <div class="form-actions"><button type="submit" class="btn btn-primary">Kaydet</button></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ========== 2) BELGELER ========== -->
+      <section id="panel-belgeler" class="panel">
+        <div class="panel-head">
+          <h2>Belgeler</h2>
+          <div class="doc-head-actions">
+            <input type="text" id="doc-search" class="doc-search" placeholder="Dosyalarda ara…" />
+            <label class="btn btn-primary" data-can-write id="doc-upload-btn">+ Dosya Yükle
+              <input type="file" id="doc-file-input" multiple hidden
+                accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt" />
+            </label>
+          </div>
+        </div>
+        <p class="panel-intro">Sözleşme, PDF, Excel ve diğer dosyalarınızı yükleyin; soldaki listeden seçince sağda önizlenir.</p>
+
+        <div id="doc-dropzone" class="dropzone" data-can-write>
+          <div class="dz-icon">⬆️</div>
+          <div>Dosyaları buraya sürükleyin <span class="muted">veya “+ Dosya Yükle”</span></div>
+          <div class="small" style="margin-top:6px;">PDF · Excel · Word · resim · CSV (maks. 25 MB)</div>
+        </div>
+        <div id="doc-progress" class="upload-progress hidden"></div>
+
+        <div class="doc-layout">
+          <div class="doc-list-col">
+            <div id="docs-list" class="list"></div>
+            <div id="docs-empty" class="empty hidden">Henüz dosya yüklenmedi.</div>
+          </div>
+          <div class="doc-preview-col">
+            <div id="doc-preview" class="doc-preview">
+              <div class="preview-placeholder">👁️ Önizlemek için soldan bir dosya seçin</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 3) RAPORLAR ========== -->
+      <section id="panel-raporlar" class="panel">
+        <div class="panel-head">
+          <h2>Raporlar</h2>
+          <button id="new-report-btn" class="btn btn-primary" data-can-write>+ Yeni Rapor</button>
+        </div>
+        <p class="panel-intro">Rapor türlerinizi, tasarımlarınızı ve fikirlerinizi saklayın. Her düzenlemede eski hâli otomatik olarak geçmişe kaydedilir.</p>
+
+        <form id="report-form" class="card form-card hidden">
+          <input type="hidden" id="report-id" />
+          <label><span>Başlık</span><input id="report-title" type="text" required maxlength="200" placeholder="örn. Mart Üretim Raporu" /></label>
+          <label><span>Kategori</span>
+            <input id="report-category" type="text" list="report-cats" maxlength="80" placeholder="örn. Üretim" />
+            <datalist id="report-cats">
+              <option value="Günlük Yönetim"></option>
+              <option value="Üretim"></option>
+              <option value="Enerji"></option>
+              <option value="Satış"></option>
+              <option value="Tasarım"></option>
+              <option value="Fikir / Geliştirme"></option>
+            </datalist>
+          </label>
+          <label><span>İçerik</span><textarea id="report-body" rows="8" required></textarea></label>
+          <label><span>Ekler (PDF, Excel, resim… — opsiyonel)</span>
+            <input type="file" id="report-files" multiple
+              accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt" />
+          </label>
+          <div id="report-attach-list" class="attach-list"></div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <button type="button" id="report-cancel" class="btn btn-ghost">Vazgeç</button>
+          </div>
+        </form>
+
+        <div id="report-chips" class="chips"></div>
+        <div id="reports-list" class="list"></div>
+        <div id="reports-empty" class="empty hidden">Henüz rapor yok.</div>
+      </section>
+
+      <!-- ========== 4) BORSA ========== -->
+      <section id="panel-borsa" class="panel">
+        <div class="subnav">
+          <button class="subnav-tab active" data-bsub="panel">Panel</button>
+          <button class="subnav-tab" data-bsub="tumhisseler">Tüm Hisseler</button>
+          <button class="subnav-tab" data-bsub="hisseler">Takip Listem</button>
+          <button class="subnav-tab" data-bsub="alarmlar">Alarmlar</button>
+          <button class="subnav-tab" data-bsub="haberler">Haberler</button>
+          <button class="subnav-tab" data-bsub="rejim">Piyasa Rejimi</button>
+          <button class="subnav-tab" data-bsub="strateji">Strateji</button>
+          <button class="subnav-tab" data-bsub="uretici">Üretici</button>
+        </div>
+
+        <!-- PANEL -->
+        <div id="bsub-panel" class="subpanel active">
+          <div id="borsa-cards" class="stat-cards"></div>
+          <div class="panel-head"><h2>Hisse Skor Tablosu</h2><span class="muted small" id="borsa-active-strategy"></span></div>
+          <div class="table-wrap"><table class="score-table" id="borsa-table"></table></div>
+          <div id="borsa-empty" class="empty hidden">Henüz hisse eklenmedi. “Hisseler” sekmesinden ekleyin.</div>
+        </div>
+
+        <!-- TUM HISSELER (TradingView piyasa tarayici) -->
+        <div id="bsub-tumhisseler" class="subpanel">
+          <div class="panel-head"><h2>Tüm Hisseler — BIST</h2></div>
+          <p class="panel-intro">Borsa İstanbul'daki tüm hisseler, canlı (gecikmeli) fiyat, değişim ve hacimle. Bir hisseye tıklayıp “Takip Listeme ekle” ile skorlamaya alabilirsiniz.</p>
+          <div class="quick-add card form-card" data-can-write>
+            <div class="grid2">
+              <label><span>Hızlı ekle — Sembol</span><input id="quick-symbol" type="text" maxlength="12" placeholder="ASELS" autocapitalize="characters" /></label>
+              <label><span>Sektör (opsiyonel)</span><input id="quick-sector" type="text" maxlength="60" placeholder="Savunma" /></label>
+            </div>
+            <div class="form-actions"><button type="button" id="quick-add-btn" class="btn btn-primary">+ Takip Listeme Ekle</button></div>
+          </div>
+          <div id="tv-screener" class="tv-screener"></div>
+        </div>
+
+        <!-- TAKIP LISTEM -->
+        <div id="bsub-hisseler" class="subpanel">
+          <div class="panel-head"><h2>Takip Listem</h2><button id="new-stock-btn" class="btn btn-primary" data-can-write>+ Hisse Ekle</button></div>
+          <p class="panel-intro">Her hisse için 5 skoru (0–10) ve makro duyarlılığını girin; sistem Genel Skoru, sınıfı ve makro etkisini hesaplar. Karta tıklayınca grafik + detay açılır.</p>
+          <form id="stock-form" class="card form-card hidden">
+            <input type="hidden" id="stock-id" />
+            <div class="grid2">
+              <label><span>Sembol</span><input id="stock-symbol" type="text" required maxlength="12" placeholder="THYAO" autocapitalize="characters" /></label>
+              <label><span>Ad</span><input id="stock-name" type="text" maxlength="80" placeholder="Türk Hava Yolları" /></label>
+            </div>
+            <label><span>Sektör</span><input id="stock-sector" type="text" maxlength="60" placeholder="Havacılık" /></label>
+            <div class="grid5">
+              <label><span>Teknik</span><input id="sc-technical" type="number" min="0" max="10" step="0.1" /></label>
+              <label><span>Temel</span><input id="sc-fundamental" type="number" min="0" max="10" step="0.1" /></label>
+              <label><span>Makro</span><input id="sc-macro" type="number" min="0" max="10" step="0.1" /></label>
+              <label><span>Haber</span><input id="sc-news" type="number" min="0" max="10" step="0.1" /></label>
+              <label><span>Risk</span><input id="sc-risk" type="number" min="0" max="10" step="0.1" /></label>
+            </div>
+            <details class="macro-sens">
+              <summary>Makro duyarlılık profili (-1 … +1) — opsiyonel</summary>
+              <p class="muted small" style="margin:8px 0">Hissenin makro varlıklara duyarlılığı. Örn. ihracatçı için USD/TRY pozitif; havacılık için Brent negatif. (Spec bölüm 3.2)</p>
+              <div class="grid5">
+                <label><span>USD/TRY</span><input id="ms-usdtry" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>Brent</span><input id="ms-brent" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>Altın</span><input id="ms-gold" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>S&P 500</span><input id="ms-sp500" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>Faiz</span><input id="ms-rate" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>VIX</span><input id="ms-vix" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>CDS</span><input id="ms-cds" type="number" min="-1" max="1" step="0.1" /></label>
+                <label><span>BIST100</span><input id="ms-bist" type="number" min="-1" max="1" step="0.1" /></label>
+              </div>
+            </details>
+            <label><span>Gerekçe / Not</span><textarea id="stock-note" rows="3" placeholder="Fiyat EMA50 üzerinde; bilanço güçlü; USD/TRY etkisi pozitif…"></textarea></label>
+            <div class="form-actions"><button type="submit" class="btn btn-primary">Kaydet</button><button type="button" id="stock-cancel" class="btn btn-ghost">Vazgeç</button></div>
+          </form>
+          <div id="stocks-list" class="list"></div>
+        </div>
+
+        <!-- HABERLER -->
+        <div id="bsub-haberler" class="subpanel">
+          <div class="panel-head"><h2>Haberler</h2><button id="new-news-btn" class="btn btn-primary" data-can-write>+ Haber Ekle</button></div>
+          <p class="panel-intro">Haber Skoru = Yön × Önem × Güvenilirlik × Güncellik. KAP en yüksek güven; haber sitesi orta; sosyal medya düşük.</p>
+          <form id="news-form" class="card form-card hidden">
+            <input type="hidden" id="news-id" />
+            <div class="grid3">
+              <label><span>Hisse (opsiyonel)</span><input id="news-symbol" type="text" maxlength="12" placeholder="ASELS" autocapitalize="characters" /></label>
+              <label><span>Kaynak</span><select id="news-source"><option value="KAP">KAP</option><option value="Haber">Haber sitesi</option><option value="Sosyal">Sosyal medya</option></select></label>
+              <label><span>Olay tipi</span><input id="news-event" type="text" maxlength="60" placeholder="Yeni sözleşme / Dava / Temettü…" /></label>
+            </div>
+            <label><span>Başlık</span><input id="news-title" type="text" required maxlength="200" /></label>
+            <div class="grid3">
+              <label><span>Etki yönü</span><select id="news-sentiment"><option value="positive">Pozitif</option><option value="neutral">Nötr</option><option value="negative">Negatif</option></select></label>
+              <label><span>Önem (1–5)</span><input id="news-importance" type="number" min="1" max="5" step="1" value="3" /></label>
+              <label><span>Tarih</span><input id="news-date" type="date" /></label>
+            </div>
+            <label><span>Özet</span><textarea id="news-body" rows="3"></textarea></label>
+            <div class="form-actions"><button type="submit" class="btn btn-primary">Kaydet</button><button type="button" id="news-cancel" class="btn btn-ghost">Vazgeç</button></div>
+          </form>
+          <div id="news-list" class="list"></div>
+          <div id="news-empty" class="empty hidden">Henüz haber yok.</div>
+        </div>
+
+        <!-- ALARMLAR -->
+        <div id="bsub-alarmlar" class="subpanel">
+          <div class="panel-head"><h2>Alarmlar</h2><span class="muted small" id="alarms-count"></span></div>
+          <p class="panel-intro">Hisse skorlarından otomatik üretilir: Seviye 2 sinyal · Seviye 3 güçlü/risk · Seviye 4 kritik. (Haber tabanlı alarmlar Haberler modülüyle güçlenecek.)</p>
+          <div id="alarms-list" class="list"></div>
+        </div>
+
+        <!-- PIYASA REJIMI -->
+        <div id="bsub-rejim" class="subpanel">
+          <div class="panel-head"><h2>Piyasa Rejimi</h2><button id="fx-refresh" class="btn btn-ghost btn-sm">↻ Yenile</button></div>
+          <p class="panel-intro">Döviz kurları canlı (ücretsiz kaynak). Diğer makro göstergeler şimdilik elle; otomatik canlı entegrasyon sıradaki fazda.</p>
+          <div id="fx-box" class="stat-cards"></div>
+          <form id="macro-form" class="card form-card" data-can-manage>
+            <div class="grid2">
+              <label><span>Genel Makro Skoru (0–10)</span><input id="macro-score" type="number" min="0" max="10" step="0.1" /></label>
+              <label><span>Rejim</span><input id="macro-regime" type="text" maxlength="40" placeholder="Seçici Pozitif / Nötr / Risk-off" /></label>
+            </div>
+            <label><span>Yorum</span><textarea id="macro-note" rows="3" placeholder="Global risk iştahı BIST için destekleyici; kur ihracatçıyı destekliyor…"></textarea></label>
+            <div class="form-actions"><button type="submit" class="btn btn-primary">Kaydet</button></div>
+          </form>
+        </div>
+
+        <!-- STRATEJI -->
+        <div id="bsub-strateji" class="subpanel">
+          <div class="panel-head"><h2>Strateji Ağırlıkları</h2></div>
+          <p class="panel-intro">Genel Skor = Teknik×a + Temel×b + Makro×c + Haber×d + Risk×e. Hazır strateji seçin ya da ağırlıkları kendiniz ayarlayın.</p>
+          <div id="preset-chips" class="chips"></div>
+          <form id="weights-form" class="card form-card">
+            <div class="grid5">
+              <label><span>Teknik %</span><input id="w-technical" type="number" min="0" max="100" step="1" /></label>
+              <label><span>Temel %</span><input id="w-fundamental" type="number" min="0" max="100" step="1" /></label>
+              <label><span>Makro %</span><input id="w-macro" type="number" min="0" max="100" step="1" /></label>
+              <label><span>Haber %</span><input id="w-news" type="number" min="0" max="100" step="1" /></label>
+              <label><span>Risk %</span><input id="w-risk" type="number" min="0" max="100" step="1" /></label>
+            </div>
+            <div class="muted small" id="w-sum">Toplam: 100%</div>
+            <div class="form-actions" data-can-manage><button type="submit" class="btn btn-primary">Ağırlıkları Kaydet</button></div>
+          </form>
+          <div class="card form-card">
+            <strong>Sınıflandırma eşikleri</strong>
+            <div class="thresholds">
+              <span><b>8,5–10</b> Güçlü Alım Adayı</span><span><b>7–8,5</b> Alım Adayı</span><span><b>6–7</b> İzle</span>
+              <span><b>4,5–6</b> Nötr</span><span><b>3–4,5</b> Riskli</span><span><b>0–3</b> Uzak Dur / Satış</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- URETICI / KOD EXPORT -->
+        <div id="bsub-uretici" class="subpanel">
+          <div class="panel-head"><h2>Strateji Üretici & Kod Export</h2></div>
+          <p class="panel-intro">Kuralları seçin; sistem JSON, Python, TradingView Pine Script ve MatriksIQ C# çıktısı üretsin. (Teknik kurallar her yere; temel/makro/haber skorları Lôwe sisteminden beslenir.)</p>
+          <form id="builder-form" class="card form-card">
+            <label><span>Strateji adı</span><input id="b-name" type="text" value="Lowe_BIST_Strategy" maxlength="60" /></label>
+
+            <h4 class="builder-h">Giriş kuralları</h4>
+            <div class="grid3">
+              <label><span>Teknik skor ≥</span><input id="b-tech-min" type="number" step="0.1" value="7" /></label>
+              <label><span>Temel skor ≥</span><input id="b-fund-min" type="number" step="0.1" value="6" /></label>
+              <label><span>Makro skor ≥</span><input id="b-macro-min" type="number" step="0.1" value="5" /></label>
+              <label><span>Haber skoru ≥</span><input id="b-news-min" type="number" step="0.1" value="-2" /></label>
+              <label><span>RSI min</span><input id="b-rsi-min" type="number" value="45" /></label>
+              <label><span>RSI max</span><input id="b-rsi-max" type="number" value="70" /></label>
+              <label><span>Hacim/ort. oranı ≥</span><input id="b-vol" type="number" step="0.1" value="1.2" /></label>
+            </div>
+            <div class="checks">
+              <label class="switch"><input type="checkbox" id="b-ema50" checked /> Fiyat EMA50 üzerinde</label>
+              <label class="switch"><input type="checkbox" id="b-ema200" checked /> Fiyat EMA200 üzerinde</label>
+              <label class="switch"><input type="checkbox" id="b-macd" checked /> MACD sinyal üstünde</label>
+            </div>
+
+            <h4 class="builder-h">Çıkış kuralları</h4>
+            <div class="grid3">
+              <label><span>Stop-loss %</span><input id="b-stop" type="number" value="8" /></label>
+              <label><span>Take-profit %</span><input id="b-tp" type="number" value="20" /></label>
+              <label><span>Trailing stop %</span><input id="b-trail" type="number" value="6" /></label>
+              <label><span>Haber skoru &lt;</span><input id="b-news-exit" type="number" step="0.1" value="-4" /></label>
+              <label><span>Makro skoru &lt;</span><input id="b-macro-exit" type="number" step="0.1" value="3" /></label>
+            </div>
+            <div class="checks">
+              <label class="switch"><input type="checkbox" id="b-exit-ema50" checked /> Fiyat EMA50 altına inerse çık</label>
+              <label class="switch"><input type="checkbox" id="b-exit-macd" checked /> MACD negatife dönerse çık</label>
+            </div>
+
+            <h4 class="builder-h">Risk kuralları</h4>
+            <div class="grid3">
+              <label><span>Maks. pozisyon %</span><input id="b-maxpos" type="number" value="10" /></label>
+              <label><span>Maks. açık pozisyon</span><input id="b-maxopen" type="number" value="5" /></label>
+              <label><span>Maks. sektör %</span><input id="b-maxsector" type="number" value="30" /></label>
+              <label><span>Min. günlük hacim (TL)</span><input id="b-minvol" type="number" value="50000000" /></label>
+            </div>
+            <label class="switch"><input type="checkbox" id="b-avoidvix" checked /> VIX yüksekse alma</label>
+          </form>
+
+          <div class="seg" id="export-buttons">
+            <button type="button" class="btn btn-ghost btn-sm" data-gen="json">JSON</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-gen="python">Python</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-gen="pine">Pine Script</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-gen="csharp">C# (MatriksIQ)</button>
+            <button type="button" class="btn btn-primary btn-sm" id="copy-code">Kopyala</button>
+          </div>
+          <pre id="code-box" class="code-box">Yukarıdan bir format seçin → JSON / Python / Pine / C# çıktısı burada görünür.</pre>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- sifre degistir modal -->
+    <div id="pw-modal" class="modal-overlay hidden">
+      <div class="modal card">
+        <h3>Şifre Değiştir</h3>
+        <form id="pw-form">
+          <label><span>Mevcut şifre</span><input id="pw-current" type="password" required autocomplete="current-password" /></label>
+          <label><span>Yeni şifre (en az 6 karakter)</span><input id="pw-new" type="password" required minlength="6" autocomplete="new-password" /></label>
+          <label><span>Yeni şifre (tekrar)</span><input id="pw-new2" type="password" required minlength="6" autocomplete="new-password" /></label>
+          <div id="pw-error" class="form-error hidden"></div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <button type="button" id="pw-cancel" class="btn btn-ghost">Vazgeç</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- hisse detay modal (grafik + skorlar + makro duyarlilik) -->
+    <div id="stock-modal" class="modal-overlay hidden">
+      <div class="stock-detail card">
+        <div class="sd-head">
+          <div>
+            <h3 id="sd-title">—</h3>
+            <div class="muted small" id="sd-sub"></div>
+          </div>
+          <div class="sd-head-actions">
+            <button type="button" id="sd-edit" class="btn btn-ghost btn-sm" data-can-write>Düzenle</button>
+            <button type="button" id="sd-close" class="btn btn-ghost btn-sm">✕ Kapat</button>
+          </div>
+        </div>
+        <div class="sd-body">
+          <div class="sd-chart"><div id="sd-tv"></div></div>
+          <div class="sd-side">
+            <div class="sd-genel">
+              <div class="sd-genel-num" id="sd-genel">—</div>
+              <span class="cls-badge" id="sd-class">—</span>
+            </div>
+            <div id="sd-scores" class="sd-scores"></div>
+            <div id="sd-macro" class="sd-macro"></div>
+            <div id="sd-note" class="sd-note"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
