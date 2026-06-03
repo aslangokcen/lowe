@@ -67,7 +67,7 @@ const firebaseConfig = {
 
 ## B) Yayına al (deploy)
 
-Bu komutları Terminal’de proje klasöründe çalıştır (`/Users/aslangokcen/kurumsal-panel`).
+Bu komutları Terminal’de proje klasöründe çalıştır (`~/lowe`).
 İstersen bu adımı **ben senin için yapayım** — sadece A.4’teki config’i ver yeter.
 
 ```bash

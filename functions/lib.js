@@ -130,6 +130,47 @@ export function fundamentalScoreFromTV(o) {
   };
 }
 
+// ---- Makro gostergeler (TradingView scanner, coklu market) ----
+const MACRO_DEFS = [
+  { key: "usdtry", label: "USD/TRY", market: "forex", ticker: "FX_IDC:USDTRY", unit: "₺", dp: 4 },
+  { key: "eurtry", label: "EUR/TRY", market: "forex", ticker: "FX_IDC:EURTRY", unit: "₺", dp: 4 },
+  { key: "gold", label: "Altın (ons)", market: "cfd", ticker: "TVC:GOLD", unit: "$", dp: 1 },
+  { key: "brent", label: "Brent Petrol", market: "futures", ticker: "ICEEUR:BRN1!", unit: "$", dp: 2 },
+  { key: "sp500", label: "S&P 500", market: "america", ticker: "SP:SPX", unit: "", dp: 0 },
+  { key: "nasdaq", label: "Nasdaq", market: "america", ticker: "NASDAQ:IXIC", unit: "", dp: 0 },
+  { key: "dow", label: "Dow Jones", market: "america", ticker: "DJ:DJI", unit: "", dp: 0 },
+  { key: "dxy", label: "DXY (Dolar Endeksi)", market: "cfd", ticker: "TVC:DXY", unit: "", dp: 2 },
+  { key: "vix", label: "VIX (Korku Endeksi)", market: "cfd", ticker: "TVC:VIX", unit: "", dp: 2 },
+  { key: "bist100", label: "BIST 100", market: "turkey", ticker: "BIST:XU100", unit: "", dp: 0 },
+  { key: "faiz", label: "TCMB Politika Faizi", market: "economics2", ticker: "ECONOMICS:TRINTR", unit: "%", dp: 2 },
+  { key: "enflasyon", label: "Enflasyon (Yıllık)", market: "economics2", ticker: "ECONOMICS:TRIRYY", unit: "%", dp: 2 },
+  { key: "tr10y", label: "TR 10Y Tahvil", market: "cfd", ticker: "TVC:TR10Y", unit: "%", dp: 2 },
+];
+export async function fetchMacro() {
+  // market bazinda grupla, her market icin tek scan cagrisi
+  const byMarket = {};
+  MACRO_DEFS.forEach((d) => { (byMarket[d.market] ||= []).push(d); });
+  const result = {};
+  await Promise.all(Object.entries(byMarket).map(async ([market, defs]) => {
+    try {
+      const r = await fetch(`https://scanner.tradingview.com/${market}/scan`, {
+        method: "POST",
+        headers: { "User-Agent": UA, "Content-Type": "application/json", Origin: "https://www.tradingview.com", Referer: "https://www.tradingview.com/" },
+        body: JSON.stringify({ symbols: { tickers: defs.map((d) => d.ticker) }, columns: ["close", "change"] }),
+      });
+      if (!r.ok) return;
+      const j = await r.json();
+      const rows = j.data || [];
+      // donen satirlari ticker'a gore eslestir
+      rows.forEach((row) => {
+        const def = defs.find((d) => d.ticker === row.s);
+        if (def && row.d) result[def.key] = { label: def.label, value: row.d[0], change: row.d[1], unit: def.unit, dp: def.dp };
+      });
+    } catch { /* bir market coktuyse digerleri devam */ }
+  }));
+  return result;
+}
+
 // ---- RSS ayristirma (haberler) ----
 export function parseRss(xml, sourceName) {
   const items = [];
